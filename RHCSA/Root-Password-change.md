@@ -17,5 +17,6 @@
 
  5. **exec /sbin/init**
   
-<img width="1133" height="597" alt="image" src="https://github.com/user-attachments/assets/2ac1cd77-35a6-4dac-bc74-1cba36b1ef08" />
+<img width="1135" height="584" alt="image" src="https://github.com/user-attachments/assets/ed210880-1aeb-4914-99f1-7ea621c60a3e" />
+
 
