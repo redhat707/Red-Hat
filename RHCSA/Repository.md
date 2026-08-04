@@ -522,6 +522,186 @@ dnf repolist
 
 ---
 
+# Elérhetőség újraindítás után
+
+Ha a feladat azt kéri, hogy a repository a rendszer újraindítása után is elérhető legyen, akkor nem elég csak kézzel felcsatolni az ISO-t vagy a DVD-meghajtót.
+
+A csatolást az `/etc/fstab` fájlban is be kell állítani.
+
+---
+
+## 1. Virtuális DVD-meghajtó tartós csatolása
+
+Az `/etc/fstab` fájl szerkesztése:
+
+```bash
+vim /etc/fstab
+```
+
+A fájl végére:
+
+```fstab
+/dev/sr0    /mnt    iso9660    ro,nofail    0 0
+```
+
+A beállítás tesztelése:
+
+```bash
+umount /mnt
+mount -a
+```
+
+Ellenőrzés:
+
+```bash
+mount | grep /mnt
+ls /mnt
+```
+
+A `nofail` opció azért hasznos, mert a rendszer akkor is elindul, ha a virtuális DVD-meghajtóban nincs ISO.
+
+Az ISO-nak újraindítás után is a virtuális DVD-meghajtóban kell maradnia.
+
+---
+
+## 2. ISO-fájl tartós csatolása
+
+Tegyük fel, hogy az ISO-fájl helye:
+
+```text
+/root/RHEL-10.iso
+```
+
+Az `/etc/fstab` fájl szerkesztése:
+
+```bash
+vim /etc/fstab
+```
+
+A fájl végére:
+
+```fstab
+/root/RHEL-10.iso    /mnt    iso9660    loop,ro,nofail    0 0
+```
+
+A beállítás tesztelése:
+
+```bash
+umount /mnt
+mount -a
+```
+
+Ellenőrzés:
+
+```bash
+mount | grep /mnt
+ls /mnt
+```
+
+Az ISO-fájlt nem szabad áthelyezni vagy törölni, mert az `/etc/fstab` a megadott elérési úton fogja keresni.
+
+---
+
+## 3. Hálózati repository újraindítás után
+
+Hálózati repository esetén nincs szükség `/etc/fstab` bejegyzésre.
+
+A repository beállítása már tartós, mert a konfiguráció az alábbi fájlban található:
+
+```text
+/etc/yum.repos.d/local.repo
+```
+
+Példa:
+
+```ini
+[BaseOS]
+name=RHEL 10 BaseOS
+baseurl=http://server.example.com/rhel10/BaseOS
+enabled=1
+gpgcheck=0
+
+[AppStream]
+name=RHEL 10 AppStream
+baseurl=http://server.example.com/rhel10/AppStream
+enabled=1
+gpgcheck=0
+```
+
+Újraindítás után a repository automatikusan használható lesz, amennyiben:
+
+- működik a hálózati kapcsolat;
+- elérhető a repository szervere;
+- helyes a `baseurl`.
+
+Ellenőrzés újraindítás után:
+
+```bash
+dnf clean all
+dnf repolist
+```
+
+---
+
+# Tartós beállítás ellenőrzése
+
+Az `/etc/fstab` módosítása után mindig futtassuk:
+
+```bash
+mount -a
+```
+
+Ha a parancs nem ad hibaüzenetet, ellenőrizzük:
+
+```bash
+findmnt /mnt
+```
+
+Ezután a repositorykat:
+
+```bash
+dnf clean all
+dnf makecache
+dnf repolist
+```
+
+---
+
+# Rövid vizsgamegoldás tartós csatolással
+
+## Virtuális DVD esetén
+
+```bash
+mkdir -p /mnt
+mount /dev/sr0 /mnt
+echo '/dev/sr0 /mnt iso9660 ro,nofail 0 0' >> /etc/fstab
+mount -a
+```
+
+## ISO-fájl esetén
+
+```bash
+mkdir -p /mnt
+mount -o loop,ro /root/RHEL-10.iso /mnt
+echo '/root/RHEL-10.iso /mnt iso9660 loop,ro,nofail 0 0' >> /etc/fstab
+mount -a
+```
+
+Ezután mindkét esetben:
+
+```bash
+dnf clean all
+dnf repolist
+```
+
+## Hálózati repository esetén
+
+Nincs szükség `/etc/fstab` bejegyzésre, mert a következő fájl újraindítás után is megmarad:
+
+```text
+/etc/yum.repos.d/local.repo
+```
+
 # Összefoglalás
 
 A repository forrását mindig a feladat határozza meg.
