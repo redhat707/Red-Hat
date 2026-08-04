@@ -1,31 +1,60 @@
-# 2. feladat – Helyi RHEL 10 repository létrehozása ISO-fájlból
+# 2. feladat – RHEL 10 repository beállítása
 
 ## Feladat
 
-Csatold fel a RHEL 10 telepítő ISO-fájlt a `/mnt` könyvtárba.
+Állíts be használható BaseOS és AppStream repositorykat RHEL 10 rendszeren.
 
-Ezután hozz létre két helyi DNF repositoryt:
+A vizsgán vagy laborban a repository forrása háromféleképpen lehet megadva:
 
-- BaseOS
-- AppStream
+1. az ISO virtuális DVD-meghajtóként van csatlakoztatva;
+2. az ISO egy fájlként található a rendszeren;
+3. a repository hálózati címen érhető el.
 
-A repositoryk legyenek engedélyezve, és ne használjanak GPG-ellenőrzést.
+Mindig a feladatban megadott elérési utat vagy URL-t kell használni.
 
 ---
 
-## Megoldás
+# 1. változat – ISO virtuális DVD-meghajtóban
 
-### 1. Az ISO-fájl csatolása
+Ebben az esetben az ISO már be van helyezve a virtuális CD/DVD-meghajtóba.
+
+## A meghajtó megkeresése
 
 ```bash
-mount -o loop RHEL-10.iso /mnt
+lsblk
 ```
 
-A `mount -o loop` lehetővé teszi, hogy az ISO-fájlt úgy csatoljuk fel, mintha fizikai lemez lenne.
+A virtuális DVD-meghajtó általában:
 
----
+```text
+sr0
+```
 
-### 2. Ellenőrizzük az ISO tartalmát
+Az eszköz teljes elérési útja:
+
+```text
+/dev/sr0
+```
+
+## Csatolási pont létrehozása
+
+```bash
+mkdir -p /mnt
+```
+
+## A DVD csatolása
+
+```bash
+mount /dev/sr0 /mnt
+```
+
+Mivel a DVD csak olvasható, használható ez is:
+
+```bash
+mount -o ro /dev/sr0 /mnt
+```
+
+## Ellenőrzés
 
 ```bash
 ls /mnt
@@ -34,19 +63,141 @@ ls /mnt
 A következő könyvtáraknak kell megjelenniük:
 
 ```text
-AppStream
 BaseOS
+AppStream
+```
+
+## Fontos
+
+Virtuális DVD-meghajtó esetén nem kell a `loop` opció.
+
+Helyes:
+
+```bash
+mount /dev/sr0 /mnt
+```
+
+Helytelen:
+
+```bash
+mount -o loop sr0 /mnt
+```
+
+A `/dev/` előtagot is ki kell írni.
+
+---
+
+# 2. változat – Az ISO fájlként található a rendszeren
+
+Ebben az esetben az ISO például ilyen helyen található:
+
+```text
+/root/RHEL-10.iso
+```
+
+vagy:
+
+```text
+/tmp/RHEL-10.iso
+```
+
+## Az ISO megkeresése
+
+```bash
+find / -type f -name "*.iso" 2>/dev/null
+```
+
+## Csatolási pont létrehozása
+
+```bash
+mkdir -p /mnt
+```
+
+## Az ISO-fájl csatolása
+
+Példa:
+
+```bash
+mount -o loop /root/RHEL-10.iso /mnt
+```
+
+Csak olvasható módban:
+
+```bash
+mount -o loop,ro /root/RHEL-10.iso /mnt
+```
+
+## Ellenőrzés
+
+```bash
+ls /mnt
+```
+
+A következő könyvtáraknak kell megjelenniük:
+
+```text
+BaseOS
+AppStream
+```
+
+## Fontos
+
+A `loop` opció csak akkor kell, amikor valódi ISO-fájlt csatolunk.
+
+Példa:
+
+```bash
+mount -o loop /root/RHEL-10.iso /mnt
 ```
 
 ---
 
-### 3. Repository konfigurációs fájl létrehozása
+# 3. változat – Hálózati repository
+
+Ebben az esetben nem kell ISO-fájlt vagy DVD-meghajtót csatolni.
+
+A feladat megadja a BaseOS és AppStream repository URL-jét.
+
+Példa:
+
+```text
+http://server.example.com/rhel10/BaseOS
+http://server.example.com/rhel10/AppStream
+```
+
+Először ellenőrizzük a hálózati kapcsolatot:
+
+```bash
+ping -c 2 server.example.com
+```
+
+Az URL elérhetőségét is ellenőrizhetjük:
+
+```bash
+curl -I http://server.example.com/rhel10/BaseOS/
+```
+
+---
+
+# Repository konfiguráció létrehozása
+
+A repository konfigurációs fájl helye:
+
+```text
+/etc/yum.repos.d/local.repo
+```
+
+A fájl létrehozása:
 
 ```bash
 vim /etc/yum.repos.d/local.repo
 ```
 
-A fájl tartalma:
+---
+
+# Repository fájl DVD vagy ISO használatakor
+
+Ha a DVD vagy ISO a `/mnt` könyvtárba van csatolva, a fájl tartalma:
 
 ```ini
 [BaseOS]
@@ -62,95 +213,150 @@ enabled=1
 gpgcheck=0
 ```
 
+A `file:///` azt jelenti, hogy a repository a helyi fájlrendszeren található.
+
 ---
 
-### 4. A DNF gyorsítótár törlése
+# Repository fájl hálózati repository esetén
+
+A feladatban megadott címeket kell használni.
+
+Példa:
+
+```ini
+[BaseOS]
+name=RHEL 10 BaseOS
+baseurl=http://server.example.com/rhel10/BaseOS
+enabled=1
+gpgcheck=0
+
+[AppStream]
+name=RHEL 10 AppStream
+baseurl=http://server.example.com/rhel10/AppStream
+enabled=1
+gpgcheck=0
+```
+
+A példában szereplő URL-t mindig a vizsgafeladatban megadott címre kell cserélni.
+
+---
+
+# A repositoryk ellenőrzése
+
+A DNF gyorsítótár törlése:
 
 ```bash
 dnf clean all
 ```
 
----
-
-### 5. A repositoryk ellenőrzése
+A repositoryk listázása:
 
 ```bash
 dnf repolist
 ```
 
-A listában meg kell jelenniük a következő repositoryknak:
+Sikeres beállítás esetén megjelenik:
 
 ```text
-BaseOS      RHEL 10 BaseOS
-AppStream   RHEL 10 AppStream
+BaseOS
+AppStream
 ```
 
----
-
-## További ellenőrzés
-
-A BaseOS repository részletes ellenőrzése:
+Részletes ellenőrzés:
 
 ```bash
 dnf repoinfo BaseOS
 ```
 
-Az AppStream repository részletes ellenőrzése:
-
 ```bash
 dnf repoinfo AppStream
 ```
 
-Megnézhetjük az elérhető csomagokat is:
+A repository metaadatainak újraépítése:
+
+```bash
+dnf makecache
+```
+
+Egy csomag keresésével is tesztelhetjük:
 
 ```bash
 dnf list available
 ```
 
+vagy:
+
+```bash
+dnf search bash
+```
+
 ---
 
-## A repository fájl magyarázata
+# Gyors döntési segédlet
 
-```ini
-[BaseOS]
+## Ha az `lsblk` parancsban látszik az `sr0`
+
+```bash
+mount /dev/sr0 /mnt
 ```
 
-Ez a repository egyedi azonosítója.
-
-```ini
-name=RHEL 10 BaseOS
-```
-
-A repository megjelenő neve.
+Ezután a repository elérési útja:
 
 ```ini
 baseurl=file:///mnt/BaseOS
 ```
 
-Megadja, hogy a csomagok a helyi fájlrendszeren találhatók.
-
-A `file:///` három perjelet tartalmaz:
-
-- `file://` a protokoll
-- `/mnt/BaseOS` az abszolút elérési út
+és:
 
 ```ini
-enabled=1
+baseurl=file:///mnt/AppStream
 ```
-
-A repository engedélyezve van.
-
-```ini
-gpgcheck=0
-```
-
-A GPG-aláírás ellenőrzése ki van kapcsolva.
 
 ---
 
-## Hibakeresés
+## Ha kaptál egy `.iso` fájlt
 
-### Az ISO nincs felcsatolva
+Példa:
+
+```bash
+mount -o loop /root/RHEL-10.iso /mnt
+```
+
+Ezután a repository elérési útja:
+
+```ini
+baseurl=file:///mnt/BaseOS
+```
+
+és:
+
+```ini
+baseurl=file:///mnt/AppStream
+```
+
+---
+
+## Ha HTTP- vagy HTTPS-címet kaptál
+
+Nem kell semmit csatolni.
+
+A megadott URL-eket közvetlenül a repository fájlba kell írni:
+
+```ini
+baseurl=http://server.example.com/rhel10/BaseOS
+```
+
+és:
+
+```ini
+baseurl=http://server.example.com/rhel10/AppStream
+```
+
+---
+
+# Hibakeresés
+
+## A `/mnt` már használatban van
 
 Ellenőrzés:
 
@@ -158,15 +364,57 @@ Ellenőrzés:
 mount | grep /mnt
 ```
 
-Újracsatolás:
+Lecsatolás:
 
 ```bash
-mount -o loop RHEL-10.iso /mnt
+umount /mnt
+```
+
+Ezután újra csatolható az ISO vagy a DVD.
+
+---
+
+## Az `sr0` nem található
+
+Ellenőrzés:
+
+```bash
+lsblk
+```
+
+```bash
+ls -l /dev/sr*
+```
+
+Ha nincs `/dev/sr0`, akkor valószínűleg nincs ISO behelyezve a virtuális DVD-meghajtóba.
+
+---
+
+## Hiba: failed to setup loop device
+
+Ez általában akkor történik, ha blokkos eszközt próbálunk ISO-fájlként csatolni.
+
+Helytelen:
+
+```bash
+mount -o loop sr0 /mnt
+```
+
+Helyes virtuális DVD esetén:
+
+```bash
+mount /dev/sr0 /mnt
+```
+
+Helyes ISO-fájl esetén:
+
+```bash
+mount -o loop /root/RHEL-10.iso /mnt
 ```
 
 ---
 
-### A BaseOS vagy AppStream könyvtár nem található
+## A BaseOS vagy AppStream könyvtár hiányzik
 
 Ellenőrzés:
 
@@ -174,68 +422,118 @@ Ellenőrzés:
 ls -l /mnt
 ```
 
-Valószínűleg nem a megfelelő RHEL DVD ISO lett felcsatolva.
+Repository metaadatok ellenőrzése:
+
+```bash
+ls /mnt/BaseOS/repodata
+```
+
+```bash
+ls /mnt/AppStream/repodata
+```
+
+Ha ezek nem léteznek, valószínűleg nem a teljes DVD ISO lett csatolva.
 
 ---
 
-### A repository nem jelenik meg
+## A repository nem jelenik meg
 
-Ellenőrizzük a konfigurációs fájlt:
+A konfiguráció ellenőrzése:
 
 ```bash
 cat /etc/yum.repos.d/local.repo
 ```
 
-Majd:
+Ezután:
 
 ```bash
 dnf clean all
+dnf makecache
 dnf repolist
 ```
 
 ---
 
-### A repository elérési útja hibás
-
-Ellenőrizzük, hogy léteznek-e a repository adatai:
+## Csak a saját repositoryk tesztelése
 
 ```bash
-ls /mnt/BaseOS/repodata
-ls /mnt/AppStream/repodata
+dnf --disablerepo="*" --enablerepo="BaseOS,AppStream" repolist
+```
+
+Csomaglista tesztelése:
+
+```bash
+dnf --disablerepo="*" --enablerepo="BaseOS,AppStream" list available
 ```
 
 ---
 
-## Fontos parancsok
+# Fontos különbség
+
+## Virtuális DVD-meghajtó
 
 ```bash
-mount -o loop RHEL-10.iso /mnt
+mount /dev/sr0 /mnt
+```
+
+## ISO-fájl
+
+```bash
+mount -o loop /root/RHEL-10.iso /mnt
+```
+
+## Hálózati repository
+
+```ini
+baseurl=http://server.example.com/rhel10/BaseOS
+```
+
+---
+
+# Rövid vizsgamegoldás
+
+## Virtuális DVD esetén
+
+```bash
+mkdir -p /mnt
+mount /dev/sr0 /mnt
 vim /etc/yum.repos.d/local.repo
 dnf clean all
 dnf repolist
-dnf repoinfo BaseOS
-dnf repoinfo AppStream
+```
+
+## ISO-fájl esetén
+
+```bash
+mkdir -p /mnt
+mount -o loop /root/RHEL-10.iso /mnt
+vim /etc/yum.repos.d/local.repo
+dnf clean all
+dnf repolist
+```
+
+## Hálózati repository esetén
+
+```bash
+vim /etc/yum.repos.d/local.repo
+dnf clean all
+dnf repolist
 ```
 
 ---
 
-## Rövid összefoglaló
+# Összefoglalás
 
-A RHEL 10 ISO-fájlt a `/mnt` könyvtárba csatoltuk:
+A repository forrását mindig a feladat határozza meg.
 
-```bash
-mount -o loop RHEL-10.iso /mnt
-```
+- Virtuális DVD esetén a `/dev/sr0` eszközt kell csatolni.
+- ISO-fájl esetén a `mount -o loop` parancsot kell használni.
+- Hálózati repository esetén a megadott URL-t közvetlenül a repo-fájlba kell írni.
 
-Ezután létrehoztuk a következő repository fájlt:
-
-```text
-/etc/yum.repos.d/local.repo
-```
-
-A fájlban beállítottuk a helyi BaseOS és AppStream repositorykat, majd a következő paranccsal ellenőriztük őket:
+A végső ellenőrzés minden esetben:
 
 ```bash
 dnf clean all
 dnf repolist
+dnf makecache
 ```
